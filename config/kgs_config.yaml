@@ -1,0 +1,33 @@
+# Knowledge Gathering System (KGS) Configuration
+# Configured for portable media vault at ~/KnowRepo1 (USB / SD Card)
+
+vault:
+  root_path: "/home/twan102000/KnowRepo1"
+  index_dir: "00_Index_and_Manifests"
+  snippets_dir: "07_Uncategorized_Inbox/snippets"
+  media_dir: "07_Uncategorized_Inbox/media"
+  daily_dir: "07_Uncategorized_Inbox/daily"
+  sd_imports_dir: "07_Uncategorized_Inbox/sd_imports"
+
+database:
+  path: "/home/twan102000/KnowRepo1/00_Index_and_Manifests/kgs_metadata.db"
+
+staging:
+  path: "/tmp/knowrepo_stage"
+  purge_after_sync: true
+
+clipboard:
+  debounce_seconds: 0.8
+  max_text_size_bytes: 10485760 # 10MB
+  capture_images: true
+  auto_tag_urls: true
+
+sd_storage:
+  allowed_filesystems:
+    - vfat
+    - exfat
+    - ext4
+    - ntfs
+  preferred_mount_parent: "/tmp/kgs_mounts"
+  safe_mode_read_only: true
+  file_extensions_filter: [] # Empty means import all recognizable formats

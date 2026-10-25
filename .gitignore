@@ -1,0 +1,62 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Downloaded files & heavy archive payloads
+*.zim
+*.part
+*.crdownload
+*.iso
+*.tar.gz
+*.zip
+*.tar
+*.zst
+
+# Runtime state, downloads and tracker files
+batch_progress.json
+pending_sizes.json
+*.log
+*.sqlite
+*.db
+
+# Staging and mount paths
+/tmp/knowrepo_stage/
+/tmp/kgs_mounts/
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
