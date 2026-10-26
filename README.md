@@ -88,7 +88,8 @@ python3 src/cli.py search "first aid"
 
 ## SD Card Provisioning, Media Replication & Multi-Device Deployment
 
-Detailed hardware provisioning, partition/filesystem preparation (exFAT/ext4), ChromeOS passthrough, and client setup instructions are documented in:
+Detailed hardware provisioning, partition/filesystem preparation (exFAT/ext4), ChromeOS passthrough, replication procedures, and client setup instructions are documented in:
+- **[KnowRepo1 Complete Source Duplication & Replication Reference Manual](docs/KNOREPO1_DUPLICATION_AND_REPLICATION_REFERENCE_MANUAL.md)**
 - **[SD Card Provisioning & Removable Storage Guide](docs/SD_CARD_PROVISIONING_AND_STORAGE_GUIDE.md)**
 
 ### Media Duplication Utility (`duplicate_repo.py`)

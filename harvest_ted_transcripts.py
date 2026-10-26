@@ -16,9 +16,10 @@ import time
 import urllib.request
 from pathlib import Path
 
-REPO_ROOT = Path(os.path.expanduser("~/KnowRepo1"))
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = Path(os.environ.get("KGS_REPO_ROOT", os.path.expanduser("~/KnowRepo1")))
 OUTPUT_DIR = REPO_ROOT / "06_History_Law_and_Civics" / "ted_talks_transcripts"
-MANAGER_PY = Path("/home/twan102000/Knowledge Gathering for Local Repository/repo_manager.py")
+MANAGER_PY = BASE_DIR / "repo_manager.py"
 
 USER_TOPICS = [
     "inclusion", "wildlife", "life", "play", "ai", "pandemic", "capitalism",
