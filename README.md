@@ -83,3 +83,29 @@ python3 src/cli.py status
 # Search across all ingested items and tags
 python3 src/cli.py search "first aid"
 ```
+
+---
+
+## SD Card Provisioning, Media Replication & Multi-Device Deployment
+
+Detailed hardware provisioning, partition/filesystem preparation (exFAT/ext4), ChromeOS passthrough, and client setup instructions are documented in:
+- **[SD Card Provisioning & Removable Storage Guide](docs/SD_CARD_PROVISIONING_AND_STORAGE_GUIDE.md)**
+
+### Media Duplication Utility (`duplicate_repo.py`)
+To clone the complete repository from the primary drive (`KnowRepo1`) to a secondary SD card (`KnowRepo2`) or external vault with high-speed 16MB buffered transfers and post-copy verification:
+```bash
+# Duplicate KnowRepo1 to KnowRepo2 (default)
+python3 duplicate_repo.py
+
+# Custom source/destination replication
+python3 duplicate_repo.py --src /path/to/source --dst /path/to/destination --buffer-mb 16
+
+# Verification audit only
+python3 duplicate_repo.py --verify-only --src ~/KnowRepo1 --dst ~/KnowRepo2
+```
+
+### Multi-Device Client Access
+- **Offline Browser**: Open `00_Index_and_Manifests/index.html` on any device without internet connection.
+- **Kiwix Reader**: Open `.zim` archives in `04_Science_and_Reference` & `06_History_Law_and_Civics` using Kiwix (Android, iOS, Windows, macOS, Linux).
+- **Local Network Wi-Fi Hotspot**: Host catalog with `cd 00_Index_and_Manifests && python3 -m http.server 8080`.
+
