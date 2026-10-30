@@ -1,8 +1,8 @@
 # Knowledge Gathering System (KGS) Configuration
-# Configured for portable media vault at ~/KnowRepo1 (USB / SD Card)
+# Keep repository-root paths relative to avoid exposing local machine details.
 
 vault:
-  root_path: "/home/twan102000/KnowRepo1"
+  root_path: "./KnowRepo1"
   index_dir: "00_Index_and_Manifests"
   snippets_dir: "07_Uncategorized_Inbox/snippets"
   media_dir: "07_Uncategorized_Inbox/media"
@@ -10,7 +10,7 @@ vault:
   sd_imports_dir: "07_Uncategorized_Inbox/sd_imports"
 
 database:
-  path: "/home/twan102000/KnowRepo1/00_Index_and_Manifests/kgs_metadata.db"
+  path: "./KnowRepo1/00_Index_and_Manifests/kgs_metadata.db"
 
 staging:
   path: "/tmp/knowrepo_stage"
