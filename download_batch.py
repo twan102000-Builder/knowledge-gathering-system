@@ -11,8 +11,9 @@ import sys
 import time
 from pathlib import Path
 
-REPO_ROOT = Path(os.path.expanduser("~/KnowRepo1"))
-MANAGER_PY = Path("/home/twan102000/Knowledge Gathering for Local Repository/repo_manager.py")
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = Path(os.environ.get("KGS_REPO_ROOT", Path.home() / "KnowRepo1")).expanduser()
+MANAGER_PY = BASE_DIR / "repo_manager.py"
 
 DOWNLOAD_QUEUE = [
     # 1. TruePrepper (Survival & Preparedness)

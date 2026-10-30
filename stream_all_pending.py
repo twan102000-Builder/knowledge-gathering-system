@@ -13,10 +13,11 @@ import sys
 import time
 from pathlib import Path
 
-REPO_ROOT = Path(os.path.expanduser("~/KnowRepo1"))
-MANAGER_PY = Path("/home/twan102000/Knowledge Gathering for Local Repository/repo_manager.py")
-QUEUE_FILE = Path("/home/twan102000/Knowledge Gathering for Local Repository/pending_batch_queue.json")
-PROGRESS_FILE = Path("/home/twan102000/Knowledge Gathering for Local Repository/batch_progress.json")
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = Path(os.environ.get("KGS_REPO_ROOT", Path.home() / "KnowRepo1")).expanduser()
+MANAGER_PY = BASE_DIR / "repo_manager.py"
+QUEUE_FILE = BASE_DIR / "pending_batch_queue.json"
+PROGRESS_FILE = BASE_DIR / "batch_progress.json"
 
 
 def check_disk_space_gb() -> float:
