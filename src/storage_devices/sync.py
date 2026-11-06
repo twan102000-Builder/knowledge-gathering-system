@@ -1,4 +1,5 @@
 import os
+import sys
 import hashlib
 from typing import List, Dict, Any
 from ..store.db import MetadataDB
@@ -30,6 +31,7 @@ class SDCardSyncPipeline:
         imported = 0
         skipped = 0
         errors = 0
+        error_details = []
 
         ext_set = {e.lower().lstrip(".") for e in extensions} if extensions else None
 
@@ -76,10 +78,13 @@ class SDCardSyncPipeline:
                     imported += 1
                 except Exception as e:
                     errors += 1
+                    error_details.append({"file": full_path, "error": str(e)})
+                    print(f"[WARN] Error importing {full_path}: {e}", file=sys.stderr)
 
         return {
             "scanned": scanned,
             "imported": imported,
             "skipped_duplicates": skipped,
-            "errors": errors
+            "errors": errors,
+            "error_details": error_details
         }

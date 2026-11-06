@@ -68,8 +68,8 @@ def write_status(status_file: Path, data: dict):
         with open(temp_file, "w") as fp:
             json.dump(data, fp, indent=2)
         temp_file.replace(status_file)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[WARN] Failed to write status file {status_file}: {e}", file=sys.stderr)
 
 
 def duplicate(src_path: Path, dst_path: Path, status_file: Path, buffer_size: int = 16 * 1024 * 1024):
@@ -204,8 +204,11 @@ def duplicate(src_path: Path, dst_path: Path, status_file: Path, buffer_size: in
 
                 fout.flush()
                 try:
-                    os.fdatasync(fout.fileno())
-                except OSError:
+                    if hasattr(os, "fdatasync"):
+                        os.fdatasync(fout.fileno())
+                    elif hasattr(os, "fsync"):
+                        os.fsync(fout.fileno())
+                except (OSError, AttributeError):
                     pass
 
             # Sync timestamps and permissions

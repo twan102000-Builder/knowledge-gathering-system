@@ -133,10 +133,10 @@ def handle_ingest(args):
                     source_type="web_url",
                     vault_rel_path=f["rel_path"],
                     title=f["title"],
-                    category=f["format"].lower(),
+                    category=f.get("category", "document"),
                     source_path=args.url,
-                    tags=[f["category"]],
-                    metadata={"size_bytes": f["size_bytes"], "source_url": args.url}
+                    tags=[f["category"], f.get("format", "").lower()],
+                    metadata={"size_bytes": f["size_bytes"], "source_url": args.url, "format": f.get("format")}
                 )
 
 
@@ -236,7 +236,7 @@ def main():
 
     sd_import = sd_subs.add_parser("import", help="Import contents of an SD card")
     sd_import.add_argument("--device", "-d", default="auto", help="Device name/path (e.g. /dev/mmcblk0p1 or 'auto')")
-    sd_import.add_argument("--unmount", action="store_true", default=True, help="Unmount automatically after import if mounted by kgs")
+    sd_import.add_argument("--unmount", action=argparse.BooleanOptionalAction, default=True, help="Unmount automatically after import if mounted by kgs")
     sd_import.set_defaults(func=handle_sd_import)
 
     sd_eject = sd_subs.add_parser("eject", help="Safely sync and unmount an SD card")

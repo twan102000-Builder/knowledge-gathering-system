@@ -1,0 +1,13 @@
+# Knowledge Gathering System (KGS) Requirements
+#
+# Core System:
+# The core KGS application (src/cli.py, repo_manager.py, duplicate_repo.py,
+# download_batch.py, stream_all_pending.py, harvest_ted_transcripts.py)
+# runs entirely on the Python Standard Library (Python 3.9+).
+#
+# Optional OS-level Utilities:
+# - Linux: lsblk, udisksctl, mount, umount, curl, wl-paste (Wayland) or xclip (X11)
+# - macOS: curl, pbpaste (text clipboard), pngpaste (optional image clipboard)
+#
+# Development & Testing:
+pytest>=7.0.0

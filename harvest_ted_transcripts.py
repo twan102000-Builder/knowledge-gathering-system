@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import sys
 import time
 import urllib.request
@@ -94,8 +95,10 @@ def classify_text(text: str) -> list:
     for topic, keywords in TOPIC_KEYWORDS.items():
         score = 0
         for kw in keywords:
-            if kw in text_lower:
-                score += text_lower.count(kw)
+            pattern = r'\b' + re.escape(kw.lower()) + r'\b'
+            matches = len(re.findall(pattern, text_lower))
+            if matches > 0:
+                score += matches
         if score > 0:
             matched.append((topic, score))
     matched.sort(key=lambda x: x[1], reverse=True)
@@ -162,11 +165,13 @@ def main():
                     matched_topics = classify_text(raw_text)
                     primary_topic = matched_topics[0] if matched_topics else "society"
 
-                    # Save into SQLite
+                    # Save into SQLite idempotently
                     cur.execute(
-                        "INSERT INTO talks (id, title, snippet, full_text, topics, word_count) VALUES (?, ?, ?, ?, ?, ?)",
+                        "INSERT OR REPLACE INTO talks (id, title, snippet, full_text, topics, word_count) VALUES (?, ?, ?, ?, ?, ?)",
                         (collected, title, first_sentence, raw_text, ",".join(matched_topics), words)
                     )
+                    # Refresh FTS index for row
+                    cur.execute("DELETE FROM talks_fts WHERE rowid = ?", (collected,))
                     cur.execute(
                         "INSERT INTO talks_fts (rowid, title, full_text, topics) VALUES (?, ?, ?, ?)",
                         (collected, title, raw_text, ",".join(matched_topics))

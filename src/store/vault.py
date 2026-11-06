@@ -1,8 +1,9 @@
 import os
+import json
 import shutil
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 class VaultManager:
     def __init__(self, root_path: str):
@@ -27,21 +28,30 @@ class VaultManager:
         metadata: dict
     ) -> str:
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in title[:40])
-        filename = f"{date_str}_{safe_title}.md"
+        rand_suffix = os.urandom(3).hex()
+        safe_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in title[:40]).strip("-_")
+        if not safe_title:
+            safe_title = "snippet"
+        filename = f"{date_str}_{rand_suffix}_{safe_title}.md"
         filepath = self.snippets_dir / filename
 
-        # Format YAML Frontmatter + Markdown
+        # Format YAML Frontmatter + Markdown safely with JSON/YAML string escaping
+        safe_tags = [json.dumps(str(t)) for t in (tags or [])]
         frontmatter = [
             "---",
-            f"title: \"{title}\"",
-            f"category: {category}",
+            f"title: {json.dumps(title)}",
+            f"category: {json.dumps(category)}",
             f"captured_at: {datetime.now().isoformat()}",
-            f"tags: [{', '.join(tags)}]",
+            f"tags: [{', '.join(safe_tags)}]",
         ]
-        for k, v in metadata.items():
-            if isinstance(v, (str, int, float, bool)):
-                frontmatter.append(f"{k}: {v}")
+        for k, v in (metadata or {}).items():
+            safe_k = "".join(c for c in str(k) if c.isalnum() or c in ("_", "-"))
+            if not safe_k:
+                continue
+            if isinstance(v, (int, float, bool)):
+                frontmatter.append(f"{safe_k}: {v}")
+            elif isinstance(v, str):
+                frontmatter.append(f"{safe_k}: {json.dumps(v)}")
         frontmatter.append("---\n")
 
         body = "\n".join(frontmatter) + content + "\n"
@@ -52,7 +62,8 @@ class VaultManager:
 
     def save_media_file(self, data: bytes, ext: str, prefix: str = "clip") -> str:
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{prefix}_{date_str}.{ext.lstrip('.')}"
+        rand_suffix = os.urandom(3).hex()
+        filename = f"{prefix}_{date_str}_{rand_suffix}.{ext.lstrip('.')}"
         dest = self.media_dir / filename
         with open(dest, "wb") as f:
             f.write(data)

@@ -113,7 +113,7 @@ As verified during repository provisioning, a complete KGS image comprises:
 
 ## 5. High-Throughput Media Replication (`duplicate_repo.py`)
 
-To provision new SD cards or clone existing repositories onto backup drives, use the included high-throughput duplication tool [`duplicate_repo.py`](file:///home/twan102000/Knowledge%20Gathering%20for%20Local%20Repository/duplicate_repo.py).
+To provision new SD cards or clone existing repositories onto backup drives, use the included high-throughput duplication tool [`duplicate_repo.py`](../duplicate_repo.py).
 
 ### Features
 - **16 MB Buffered Sequential I/O**: Maximizes sustained write throughput across SD card controllers and 9p virtualization layers.

@@ -313,11 +313,17 @@ def cmd_index(repo_root: Path):
             rel_path = fpath.relative_to(repo_root).as_posix()
             stat = fpath.stat()
             size_bytes = stat.st_size
-            mtime = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d")
+            mtime_display = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d")
+            mtime_epoch = stat.st_mtime
 
             # Reuse hash if file size and mtime haven't changed
             prev = existing_catalog.get(rel_path)
-            if prev and prev.get("size_bytes") == size_bytes and prev.get("mtime") == mtime and prev.get("sha256"):
+            prev_mtime_match = (
+                prev.get("mtime_epoch") == mtime_epoch
+                if prev and "mtime_epoch" in prev
+                else (prev.get("mtime") == mtime_display if prev else False)
+            )
+            if prev and prev.get("size_bytes") == size_bytes and prev_mtime_match and prev.get("sha256"):
                 sha256 = prev["sha256"]
                 source_url = prev.get("source_url", "")
                 title = prev.get("title", fname)
@@ -326,7 +332,7 @@ def cmd_index(repo_root: Path):
                 source_url = prev.get("source_url", "") if prev else ""
                 title = prev.get("title", fname) if prev else fname
 
-            category = rel_path.split("/")[0]
+            category = rel_path.split("/")[0] if "/" in rel_path else "root"
             ext = fpath.suffix.lower().lstrip(".") or "file"
 
             entry = {
@@ -337,7 +343,8 @@ def cmd_index(repo_root: Path):
                 "format": ext.upper(),
                 "size_bytes": size_bytes,
                 "size_human": human_size(size_bytes),
-                "mtime": mtime,
+                "mtime": mtime_display,
+                "mtime_epoch": mtime_epoch,
                 "sha256": sha256,
                 "source_url": source_url,
             }
@@ -405,7 +412,13 @@ def cmd_index(repo_root: Path):
     (index_dir / "INDEX.md").write_text("\n".join(md_lines) + "\n", encoding="utf-8")
 
     # Generate standalone offline searchable index.html
-    entries_json = json.dumps(entries)
+    # Escape '<', '>', and '&' so embedded JSON cannot break out of <script>
+    entries_json = (
+        json.dumps(entries, ensure_ascii=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -512,6 +525,21 @@ const searchInput = document.getElementById('search');
 const catFilter = document.getElementById('catFilter');
 const fmtFilter = document.getElementById('fmtFilter');
 
+function escapeHtml(str) {{
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}}
+
+function safeRelPath(path) {{
+  if (!path) return '';
+  return encodeURI(String(path)).replace(/'/g, '%27');
+}}
+
 function render() {{
   const q = searchInput.value.toLowerCase().trim();
   const cat = catFilter.value;
@@ -534,14 +562,14 @@ function render() {{
   tbody.innerHTML = filtered.map(f => `
     <tr>
       <td>
-        <a href="../${{f.rel_path}}" target="_blank">${{f.title}}</a>
-        <div class="mono">${{f.rel_path}}</div>
+        <a href="../${{safeRelPath(f.rel_path)}}" target="_blank" rel="noopener noreferrer">${{escapeHtml(f.title)}}</a>
+        <div class="mono">${{escapeHtml(f.rel_path)}}</div>
       </td>
-      <td>${{f.category.replace(/_/g, ' ')}}</td>
-      <td><span class="badge">${{f.format}}</span></td>
-      <td>${{f.size_human}}</td>
-      <td>${{f.mtime}}</td>
-      <td class="mono" title="${{f.sha256}}">${{f.sha256.slice(0, 12)}}</td>
+      <td>${{escapeHtml((f.category || '').replace(/_/g, ' '))}}</td>
+      <td><span class="badge">${{escapeHtml(f.format)}}</span></td>
+      <td>${{escapeHtml(f.size_human)}}</td>
+      <td>${{escapeHtml(f.mtime)}}</td>
+      <td class="mono" title="${{escapeHtml(f.sha256)}}">${{escapeHtml((f.sha256 || '').slice(0, 12))}}</td>
     </tr>
   `).join('');
 }}
@@ -567,8 +595,14 @@ def cmd_ingest(repo_root: Path, url: str, category: str, fmt: str, custom_title:
     target_dir = repo_root / target_rel_folder
     target_dir.mkdir(parents=True, exist_ok=True)
 
+    parsed_url = urllib.parse.urlparse(url)
+    if parsed_url.scheme.lower() not in ("http", "https"):
+        raise ValueError(f"Unsupported or unsafe URL scheme: '{parsed_url.scheme}'. Only http and https are allowed.")
+
     os.makedirs(STAGING_DIR, exist_ok=True)
     stage_path = Path(tempfile.mkdtemp(prefix="ingest_", dir=STAGING_DIR))
+
+    MAX_INGEST_BYTES = 500 * 1024 * 1024  # 500 MB safety threshold
 
     try:
         print(f"[*] Fetching: {url}")
@@ -580,11 +614,20 @@ def cmd_ingest(repo_root: Path, url: str, category: str, fmt: str, custom_title:
         )
         with urllib.request.urlopen(req, timeout=60) as resp:
             content_type = resp.headers.get("Content-Type", "").lower()
-            raw_bytes = resp.read()
+            chunks = []
+            bytes_read = 0
+            while True:
+                chunk = resp.read(65536)
+                if not chunk:
+                    break
+                bytes_read += len(chunk)
+                if bytes_read > MAX_INGEST_BYTES:
+                    raise ValueError(f"Payload exceeded max safety size limit of {human_size(MAX_INGEST_BYTES)}")
+                chunks.append(chunk)
+            raw_bytes = b"".join(chunks)
 
         # Determine requested or auto-detected format
         fmt = fmt.lower().lstrip(".")
-        parsed_url = urllib.parse.urlparse(url)
         url_basename = os.path.basename(urllib.parse.unquote(parsed_url.path))
         url_stem, url_ext = os.path.splitext(url_basename)
         url_ext = url_ext.lower().lstrip(".")
@@ -625,11 +668,14 @@ def cmd_ingest(repo_root: Path, url: str, category: str, fmt: str, custom_title:
             safe_name = f"{ sanitize_filename(title) }.{fmt}"
             staged_file = stage_path / safe_name
 
+            clean_title = title.replace('"', '').replace('\n', ' ').strip()
+            clean_url = url.replace('\n', '').strip()
+
             if fmt == "md":
                 header = (
                     "---\n"
-                    f"title: \"{title.replace('\"', '')}\"\n"
-                    f"source_url: \"{url}\"\n"
+                    f"title: \"{clean_title}\"\n"
+                    f"source_url: \"{clean_url}\"\n"
                     f"date_saved: \"{date_str}\"\n"
                     f"category: \"{target_rel_folder}\"\n"
                     "---\n\n"
@@ -638,8 +684,8 @@ def cmd_ingest(repo_root: Path, url: str, category: str, fmt: str, custom_title:
                 staged_file.write_text(header + converted, encoding="utf-8")
             else:
                 header = (
-                    f"TITLE: {title}\n"
-                    f"SOURCE: {url}\n"
+                    f"TITLE: {clean_title}\n"
+                    f"SOURCE: {clean_url}\n"
                     f"DATE SAVED: {date_str}\n"
                     f"CATEGORY: {target_rel_folder}\n"
                     + ("=" * 72) + "\n\n"

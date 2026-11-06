@@ -1,6 +1,7 @@
 import os
 import json
 import sqlite3
+import contextlib
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -10,13 +11,21 @@ class MetadataDB:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._init_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
+    @contextlib.contextmanager
+    def _connection(self):
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     def _init_db(self):
-        with self._get_connection() as conn:
+        with self._connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS items (
@@ -39,10 +48,9 @@ class MetadataDB:
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_source_type ON items(source_type)
             """)
-            conn.commit()
 
     def item_exists(self, content_hash: str) -> bool:
-        with self._get_connection() as conn:
+        with self._connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM items WHERE content_hash = ?", (content_hash,))
             return cursor.fetchone() is not None
@@ -64,10 +72,10 @@ class MetadataDB:
         c_at = (created_at or datetime.now()).isoformat()
         i_at = datetime.now().isoformat()
 
-        with self._get_connection() as conn:
+        with self._connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO items (
+                INSERT OR REPLACE INTO items (
                     content_hash, source_type, title, category,
                     source_path, vault_rel_path, tags, metadata_json,
                     created_at, ingested_at
@@ -77,11 +85,10 @@ class MetadataDB:
                 source_path, vault_rel_path, tags_str, meta_json,
                 c_at, i_at
             ))
-            conn.commit()
             return cursor.lastrowid
 
     def list_items(self, limit: int = 50, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        with self._get_connection() as conn:
+        with self._connection() as conn:
             cursor = conn.cursor()
             if source_type:
                 cursor.execute(
@@ -97,18 +104,25 @@ class MetadataDB:
             return [dict(r) for r in rows]
 
     def search_items(self, query: str) -> List[Dict[str, Any]]:
-        with self._get_connection() as conn:
+        escaped = (
+            query.replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+        )
+        wildcard = f"%{escaped}%"
+        with self._connection() as conn:
             cursor = conn.cursor()
-            wildcard = f"%{query}%"
             cursor.execute("""
                 SELECT * FROM items
-                WHERE title LIKE ? OR tags LIKE ? OR metadata_json LIKE ?
+                WHERE title LIKE ? ESCAPE '\\'
+                   OR tags LIKE ? ESCAPE '\\'
+                   OR metadata_json LIKE ? ESCAPE '\\'
                 ORDER BY id DESC LIMIT 50
             """, (wildcard, wildcard, wildcard))
             return [dict(r) for r in cursor.fetchall()]
 
     def stats(self) -> Dict[str, Any]:
-        with self._get_connection() as conn:
+        with self._connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*), source_type FROM items GROUP BY source_type")
             counts = {row[1]: row[0] for row in cursor.fetchall()}

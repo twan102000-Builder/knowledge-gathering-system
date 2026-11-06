@@ -110,9 +110,10 @@ def main():
             print("  Halting queue to prevent drive fill.")
             sys.exit(1)
 
-        # Download with curl resumable (-C -)
+        # Download with curl resumable (-C -) with HTTP error failure (-f)
         cmd = [
             "curl",
+            "-f",
             "-L",
             "-C", "-",
             "--retry", "5",

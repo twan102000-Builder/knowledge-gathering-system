@@ -72,6 +72,7 @@ def main():
 
         cmd = [
             "curl",
+            "-f",
             "-sL",
             "-C", "-",
             "--retry", "3",

@@ -310,7 +310,7 @@ sqlite3 ~/KnowRepo1/06_History_Law_and_Civics/ted_talks_transcripts/ted_transcri
 
 ## 6. Method 2: High-Speed Drive-to-Drive Media Duplication
 
-If you already have a physical drive containing an initialized `KnowRepo1` and want to duplicate it onto another drive or machine **without re-downloading ~115 GB over the internet**, use [`duplicate_repo.py`](file:///home/twan102000/Knowledge%20Gathering%20for%20Local%20Repository/duplicate_repo.py).
+If you already have a physical drive containing an initialized `KnowRepo1` and want to duplicate it onto another drive or machine **without re-downloading ~115 GB over the internet**, use [`duplicate_repo.py`](../duplicate_repo.py).
 
 ### How It Works
 - **16 MB Buffered Sequential Transfers:** Optimized for removable media, SD card controllers, and 9p virtualization layers.
