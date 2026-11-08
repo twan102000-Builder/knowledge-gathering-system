@@ -1,12 +1,12 @@
 # Knowledge Gathering System (KGS) — Unified Local Repository
 
-A unified, zero-local-disk-bloat knowledge gathering engine. Integrates clipboard snippet ingestion, automated SD card/removable media importing, web document conversion (.md, .txt, .pdf, .epub), Dewey-style taxonomy management, SHA-256 integrity manifests, and an offline searchable catalog.
+A unified, zero-local-disk-bloat knowledge gathering engine. Integrates clipboard snippet ingestion, automated SD card/removable media importing, web document conversion (.md, .txt, .pdf, .epub), deduplication, metadata indexing, and dual-tier synchronization across local machines and a shared portable archive drive.
 
-KGS features a **Dual-Tier Storage Architecture** optimized for **Apple macOS devices** and **portable removable 1TB drives** (APFS / exFAT / HFS+). Ingest and search locally on Mac with zero latency, and push to your portable 1TB main archive with cryptographic integrity and storage-saving file offloading.
+KGS features a Dual-Tier Storage Architecture optimized for Apple macOS devices and portable removable archive drives of varying capacities (for example USB-C SSDs and HDDs from smaller external drives to multi-terabyte devices). Ingest and search locally on Mac with zero latency, then push verified content to a shared archive partition that is identified by label and mount metadata rather than by a fixed 1 TB assumption.
 
 ---
 
-## Cross-Device Architecture (Mac mini, MacBook Pro, Portable 1TB Drive)
+## Cross-Device Architecture (Mac mini, MacBook Pro, Portable Archive Drive)
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -19,22 +19,21 @@ KGS features a **Dual-Tier Storage Architecture** optimized for **Apple macOS de
 |   • Fast local NVMe capture & offline search          • Fast mobile capture & field reading       |
 |                                                                                                   |
 +---------------------------------------------------------------------------------------------------+
-                                          |                                           |
-                                          | USB-C (when connected)                    | USB-C (when connected)
-                                          +---------------------+---------------------+
-                                                                |
-                                                                v
-                                 +-------------------------------------------------------------+
-                                 |          [UNIVERSAL MAIN KNOW REPO ARCHIVE]                 |
-                                 |             (Portable Removable 1TB Drive)                  |
-                                 |                                                             |
-                                 |   Single Dedicated Partition: 'KnowRepo'                    |
-                                 |   • Holds the canonical master repository, manifests,       |
-                                 |     Dewey categories (00-07), and metadata database         |
-                                 |   • Shared across Mac mini, MacBook Pro, and all devices    |
-                                 |   • Sibling partitions on the 1TB drive (if any) are        |
-                                 |     preserved untouched                                     |
-                                 +-------------------------------------------------------------+
+                                           |                                           |
+                                           | USB-C (when connected)                    | USB-C (when connected)
+                                           +---------------------+---------------------+
+                                                                 |
+                                                                 v
+                                  +-------------------------------------------------------------+
+                                  | [UNIVERSAL MAIN KNOW REPO ARCHIVE]                           |
+                                  | Portable removable archive drive (capacity varies by device) |
+                                  |                                                             |
+                                  |   Single dedicated KnowRepo partition                       |
+                                  |   • Holds the canonical master repository, manifests,       |
+                                  |     Dewey categories (00-07), and metadata database         |
+                                  |   • Shared across Mac mini, MacBook Pro, and all devices    |
+                                  |   • Sibling partitions are preserved untouched               |
+                                  +-------------------------------------------------------------+
 ```
 
 ### Repository Taxonomy (`00` to `07`)
@@ -63,16 +62,16 @@ KnowRepo_Vault/
 
 ## Unified Command Suite (`src/cli.py`)
 
-### 1. Dual-Tier Storage Sync (Local Mac Repo <--> 1TB Removable Main Archive)
+### 1. Dual-Tier Storage Sync (Local Mac Repo <--> Portable Archive)
 
 ```bash
 # View storage status, capacity, and pending sync deltas across both tiers
 python3 src/cli.py tier status
 
-# Initialize Dewey taxonomy on both local Mac and 1TB drive archive
+# Initialize Dewey taxonomy on both local Mac and the portable archive tier
 python3 src/cli.py tier init
 
-# Push local captures & imports to 1TB drive with atomic writes and SHA-256 validation
+# Push local captures & imports to the portable archive with atomic writes and SHA-256 validation
 python3 src/cli.py tier push
 
 # Dry-run push to preview transfer without disk mutation
@@ -81,10 +80,10 @@ python3 src/cli.py tier push --dry-run
 # Conserve Mac SSD space: offload verified files >= 25MB to lightweight stubs
 python3 src/cli.py tier push --offload --threshold-mb 25
 
-# Rehydrate an offloaded stub back to full content from the 1TB drive
+# Rehydrate an offloaded stub back to full content from the portable archive
 python3 src/cli.py tier hydrate ~/KnowRepo_Local/04_Science_and_Reference/heavy_manual.txt.stub.json
 
-# Pull specific categories or master catalog from 1TB drive to local Mac
+# Pull specific categories or master catalog from the portable archive to local Mac
 python3 src/cli.py tier pull --categories "01,05"
 
 # Cryptographically verify file integrity against MANIFEST.sha256 across both tiers
@@ -94,7 +93,7 @@ python3 src/cli.py tier verify
 ### 2. macOS Native Storage & Volume Management (`kgs mac`)
 
 ```bash
-# Discover all Mac disks, APFS containers, partitions, and identify 1TB drive
+# Discover all Mac disks, APFS containers, partitions, and identify portable archive drives
 python3 src/cli.py mac list
 
 # Inspect detailed diskutil metadata for any volume/partition
@@ -106,7 +105,7 @@ python3 src/cli.py mac mount disk5s1 --readonly
 # Flush write buffers and safely unmount volume
 python3 src/cli.py mac unmount disk5s1
 
-# Flush write caches and eject the entire 1TB external enclosure
+# Flush write caches and eject the entire external enclosure
 python3 src/cli.py mac eject disk4
 
 # Strip .DS_Store and ._* metadata artifacts for clean cross-device portability
@@ -169,8 +168,8 @@ python3 src/cli.py search "first aid"
 
 ## Documentation & Manuals
 
-- **[Mac Devices & 1TB Portable Removable Drive Integration Guide](docs/MAC_AND_PORTABLE_1TB_DRIVE_INTEGRATION_GUIDE.md)**: Architecture, APFS partition workflows, dual-tier synchronization, storage conservation, and safety protocols.
-- **[KnowRepo1 Complete Source Duplication & Replication Reference Manual](docs/KNOREPO1_DUPLICATION_AND_REPLICATION_REFERENCE_MANUAL.md)**: Hardware provisioning, replication procedures, and client setup.
+- **[Mac Devices & Portable Archive Drive Integration Guide](docs/MAC_AND_PORTABLE_1TB_DRIVE_INTEGRATION_GUIDE.md)**: Architecture, APFS partition workflows, dual-tier synchronization, storage discovery, and portable archive setup across multiple capacities.
+- **[KnowRepo1 Complete Source Duplication & Replication Reference Manual](docs/KNOREPO1_DUPLICATION_AND_REPLICATION_REFERENCE_MANUAL.md)**: Hardware provisioning, replication procedures, and client/host deployment guidance.
 - **[SD Card Provisioning & Removable Storage Guide](docs/SD_CARD_PROVISIONING_AND_STORAGE_GUIDE.md)**: Partition layouts and multi-OS deployment.
 
 ### Media Duplication Utility (`duplicate_repo.py`)
