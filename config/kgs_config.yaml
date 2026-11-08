@@ -1,16 +1,34 @@
 # Knowledge Gathering System (KGS) Configuration
-# Configured for portable media vault at ~/KnowRepo1 (USB / SD Card)
+# Dual-Tier Architecture: On-Device Mac Repo <--> 1TB Portable Removable Main Archive
+# (Host 990 PRO NVMe is treated strictly as a local Mac mini storage extension)
 
+# Primary on-device local repository (fast local NVMe cache for capture, reading, and offline search)
 vault:
-  root_path: "~/KnowRepo1"
+  root_path: "~/KnowRepo_Local"
   index_dir: "00_Index_and_Manifests"
   snippets_dir: "07_Uncategorized_Inbox/snippets"
   media_dir: "07_Uncategorized_Inbox/media"
   daily_dir: "07_Uncategorized_Inbox/daily"
   sd_imports_dir: "07_Uncategorized_Inbox/sd_imports"
 
+# Dual-Tier Storage Architecture
+tier_architecture:
+  enabled: true
+  local_repo_path: "~/KnowRepo_Local"
+  main_archive:
+    auto_detect_portable_drive: true
+    target_capacity_gb: 1000
+    knowrepo_partition_keywords:
+      - "KnowRepo"
+      - "KnowRepo1"
+      - "KnowRepo_Archive"
+      - "Know_Repo"
+      - "KnowRepo_Main"
+  auto_offload_threshold_mb: 25
+  clean_macos_artifacts: true
+
 database:
-  path: "~/KnowRepo1/00_Index_and_Manifests/kgs_metadata.db"
+  path: "~/KnowRepo_Local/00_Index_and_Manifests/kgs_metadata.db"
 
 staging:
   path: "/tmp/knowrepo_stage"
@@ -24,10 +42,12 @@ clipboard:
 
 sd_storage:
   allowed_filesystems:
+    - apfs
+    - hfs+
     - vfat
     - exfat
     - ext4
     - ntfs
   preferred_mount_parent: "/tmp/kgs_mounts"
   safe_mode_read_only: true
-  file_extensions_filter: [] # Empty means import all recognizable formats
+  file_extensions_filter: []

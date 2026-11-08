@@ -2,14 +2,45 @@
 
 A unified, zero-local-disk-bloat knowledge gathering engine. Integrates clipboard snippet ingestion, automated SD card/removable media importing, web document conversion (.md, .txt, .pdf, .epub), Dewey-style taxonomy management, SHA-256 integrity manifests, and an offline searchable catalog.
 
-All content is staged locally in temporary memory/disk (`/tmp/knowrepo_stage`), verified via SHA-256, and immediately flushed to the portable drive (`~/KnowRepo1` -> `/mnt/shared/removable/USB Drive`), leaving zero clutter on the host device.
+KGS features a **Dual-Tier Storage Architecture** optimized for **Apple macOS devices** and **portable removable 1TB drives** (APFS / exFAT / HFS+). Ingest and search locally on Mac with zero latency, and push to your portable 1TB main archive with cryptographic integrity and storage-saving file offloading.
 
 ---
 
-## Repository Taxonomy on Attached Drive (`~/KnowRepo1`)
+## Cross-Device Architecture (Mac mini, MacBook Pro, Portable 1TB Drive)
 
 ```
-~/KnowRepo1/
++---------------------------------------------------------------------------------------------------+
+|                                      CROSS-DEVICE ECOSYSTEM                                       |
++---------------------------------------------------------------------------------------------------+
+|                                                                                                   |
+|  [Device A: Mac mini Workstation]                    [Device B: MacBook Pro (Mobile)]             |
+|   • Main Storage: Samsung 990 PRO NVMe                • Main Storage: Internal NVMe SSD           |
+|   • Local Repo  : /Volumes/990_PRO/KnowRepo_Local     • Local Repo  : ~/KnowRepo_Local            |
+|   • Fast local NVMe capture & offline search          • Fast mobile capture & field reading       |
+|                                                                                                   |
++---------------------------------------------------------------------------------------------------+
+                                          |                                           |
+                                          | USB-C (when connected)                    | USB-C (when connected)
+                                          +---------------------+---------------------+
+                                                                |
+                                                                v
+                                 +-------------------------------------------------------------+
+                                 |          [UNIVERSAL MAIN KNOW REPO ARCHIVE]                 |
+                                 |             (Portable Removable 1TB Drive)                  |
+                                 |                                                             |
+                                 |   Single Dedicated Partition: 'KnowRepo'                    |
+                                 |   • Holds the canonical master repository, manifests,       |
+                                 |     Dewey categories (00-07), and metadata database         |
+                                 |   • Shared across Mac mini, MacBook Pro, and all devices    |
+                                 |   • Sibling partitions on the 1TB drive (if any) are        |
+                                 |     preserved untouched                                     |
+                                 +-------------------------------------------------------------+
+```
+
+### Repository Taxonomy (`00` to `07`)
+
+```
+KnowRepo_Vault/
 ├── 00_Index_and_Manifests/
 │   ├── INDEX.md             # Master Markdown index
 │   ├── index.html           # Offline interactive searchable catalog
@@ -32,8 +63,58 @@ All content is staged locally in temporary memory/disk (`/tmp/knowrepo_stage`), 
 
 ## Unified Command Suite (`src/cli.py`)
 
-### 1. Web Source Ingestion
-Downloads, converts to clean `.md`/`.txt` or saves native `.pdf`/`.epub`, computes checksums, moves to category on `~/KnowRepo1`, and cleans staging:
+### 1. Dual-Tier Storage Sync (Local Mac Repo <--> 1TB Removable Main Archive)
+
+```bash
+# View storage status, capacity, and pending sync deltas across both tiers
+python3 src/cli.py tier status
+
+# Initialize Dewey taxonomy on both local Mac and 1TB drive archive
+python3 src/cli.py tier init
+
+# Push local captures & imports to 1TB drive with atomic writes and SHA-256 validation
+python3 src/cli.py tier push
+
+# Dry-run push to preview transfer without disk mutation
+python3 src/cli.py tier push --dry-run
+
+# Conserve Mac SSD space: offload verified files >= 25MB to lightweight stubs
+python3 src/cli.py tier push --offload --threshold-mb 25
+
+# Rehydrate an offloaded stub back to full content from the 1TB drive
+python3 src/cli.py tier hydrate ~/KnowRepo_Local/04_Science_and_Reference/heavy_manual.txt.stub.json
+
+# Pull specific categories or master catalog from 1TB drive to local Mac
+python3 src/cli.py tier pull --categories "01,05"
+
+# Cryptographically verify file integrity against MANIFEST.sha256 across both tiers
+python3 src/cli.py tier verify
+```
+
+### 2. macOS Native Storage & Volume Management (`kgs mac`)
+
+```bash
+# Discover all Mac disks, APFS containers, partitions, and identify 1TB drive
+python3 src/cli.py mac list
+
+# Inspect detailed diskutil metadata for any volume/partition
+python3 src/cli.py mac info disk5s1
+
+# Safely mount volume (read-only mode supported)
+python3 src/cli.py mac mount disk5s1 --readonly
+
+# Flush write buffers and safely unmount volume
+python3 src/cli.py mac unmount disk5s1
+
+# Flush write caches and eject the entire 1TB external enclosure
+python3 src/cli.py mac eject disk4
+
+# Strip .DS_Store and ._* metadata artifacts for clean cross-device portability
+python3 src/cli.py mac clean ~/KnowRepo_Local
+```
+
+### 3. Web Source Ingestion
+Downloads, converts to clean `.md`/`.txt` or saves native `.pdf`/`.epub`, computes checksums, moves to category, and cleans staging:
 ```bash
 # Ingest an article or guide into Category 01 (Medical) as Markdown
 python3 src/cli.py ingest "https://example.com/field-first-aid" -c 01 -f md -t "Field First Aid Guide"
@@ -45,9 +126,9 @@ python3 src/cli.py ingest "https://example.com/solar-inverter-wiring.pdf" -c 03 
 python3 src/cli.py ingest "https://example.com/linux-networking" -c 05
 ```
 
-### 2. Clipboard Aggregator
+### 4. Clipboard Aggregator
 ```bash
-# Capture current clipboard selection
+# Capture current clipboard selection (macOS pbpaste native support)
 python3 src/cli.py clip
 
 # Capture with tags and citation notes
@@ -57,19 +138,19 @@ python3 src/cli.py clip --tag "medicine,surgery" --note "Emergency wound closure
 python3 src/cli.py clipboard-watch --interval 1.0
 ```
 
-### 3. SD Port & Removable Media Ingest
+### 5. SD Port & Removable Media Ingest
 ```bash
-# List all connected SD cards / flash media
+# List all connected SD cards / flash media (macOS native diskutil & Linux lsblk)
 python3 src/cli.py sd list
 
 # Safely mount read-only, hash-deduplicate, and copy into vault
 python3 src/cli.py sd import --device auto
 
 # Safely unmount and eject SD card
-python3 src/cli.py sd eject /dev/mmcblk0p1
+python3 src/cli.py sd eject /dev/disk5s1
 ```
 
-### 4. Integrity, Indexing & Search
+### 6. Integrity, Indexing & Search
 ```bash
 # Rebuild master INDEX.md, index.html, and MANIFEST.sha256
 python3 src/cli.py index
@@ -80,33 +161,24 @@ python3 src/cli.py verify
 # View overall repository status
 python3 src/cli.py status
 
-# Search across all ingested items and tags
+# Search across all ingested items and tags in SQLite DB and catalog
 python3 src/cli.py search "first aid"
 ```
 
 ---
 
-## SD Card Provisioning, Media Replication & Multi-Device Deployment
+## Documentation & Manuals
 
-Detailed hardware provisioning, partition/filesystem preparation (exFAT/ext4), ChromeOS passthrough, replication procedures, and client setup instructions are documented in:
-- **[KnowRepo1 Complete Source Duplication & Replication Reference Manual](docs/KNOREPO1_DUPLICATION_AND_REPLICATION_REFERENCE_MANUAL.md)**
-- **[SD Card Provisioning & Removable Storage Guide](docs/SD_CARD_PROVISIONING_AND_STORAGE_GUIDE.md)**
+- **[Mac Devices & 1TB Portable Removable Drive Integration Guide](docs/MAC_AND_PORTABLE_1TB_DRIVE_INTEGRATION_GUIDE.md)**: Architecture, APFS partition workflows, dual-tier synchronization, storage conservation, and safety protocols.
+- **[KnowRepo1 Complete Source Duplication & Replication Reference Manual](docs/KNOREPO1_DUPLICATION_AND_REPLICATION_REFERENCE_MANUAL.md)**: Hardware provisioning, replication procedures, and client setup.
+- **[SD Card Provisioning & Removable Storage Guide](docs/SD_CARD_PROVISIONING_AND_STORAGE_GUIDE.md)**: Partition layouts and multi-OS deployment.
 
 ### Media Duplication Utility (`duplicate_repo.py`)
-To clone the complete repository from the primary drive (`KnowRepo1`) to a secondary SD card (`KnowRepo2`) or external vault with high-speed 16MB buffered transfers and post-copy verification:
+To clone the complete repository from the primary drive to a secondary SD card or backup vault with 16MB buffered transfers and post-copy verification:
 ```bash
-# Duplicate KnowRepo1 to KnowRepo2 (default)
-python3 duplicate_repo.py
+# Duplicate source to destination
+python3 duplicate_repo.py --src /Volumes/990_PRO/KnowRepo_Main_Archive --dst /Volumes/KnowRepo2 --buffer-mb 16
 
-# Custom source/destination replication
-python3 duplicate_repo.py --src /path/to/source --dst /path/to/destination --buffer-mb 16
-
-# Verification audit only
-python3 duplicate_repo.py --verify-only --src ~/KnowRepo1 --dst ~/KnowRepo2
+# Verification pass only
+python3 duplicate_repo.py --verify-only --src ~/KnowRepo_Local --dst /Volumes/990_PRO/KnowRepo_Main_Archive
 ```
-
-### Multi-Device Client Access
-- **Offline Browser**: Open `00_Index_and_Manifests/index.html` on any device without internet connection.
-- **Kiwix Reader**: Open `.zim` archives in `04_Science_and_Reference` & `06_History_Law_and_Civics` using Kiwix (Android, iOS, Windows, macOS, Linux).
-- **Local Network Wi-Fi Hotspot**: Host catalog with `cd 00_Index_and_Manifests && python3 -m http.server 8080`.
-

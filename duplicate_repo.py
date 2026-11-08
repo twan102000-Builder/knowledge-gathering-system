@@ -38,17 +38,22 @@ def format_duration(seconds: float) -> str:
 
 
 def scan_source(src_path: Path):
-    """Scan source directory for all subdirectories and files."""
+    """Scan source directory for all subdirectories and files, filtering OS artifacts."""
     dirs_to_create = []
     files_to_copy = []
     total_bytes = 0
 
     for root, dirs, files in os.walk(src_path, followlinks=True):
+        # Filter hidden and macOS system directories
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("__pycache__", ".Trashes", ".fseventsd", ".Spotlight-V100")]
         rel_dir = Path(root).relative_to(src_path)
         for d in dirs:
             dirs_to_create.append(rel_dir / d)
 
         for f in files:
+            # Skip macOS artifact files and hidden files
+            if f.startswith(".") or f.startswith("._") or f == ".DS_Store":
+                continue
             file_rel = rel_dir / f
             file_full = Path(root) / f
             try:

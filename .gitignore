@@ -48,10 +48,19 @@ pending_sizes.json
 *.log
 *.sqlite
 *.db
+*.sqlite3
 
 # Staging and mount paths
 /tmp/knowrepo_stage/
 /tmp/kgs_mounts/
+.tmp_*
+*.tmp
+
+# Environment & credentials safety
+.env
+.env.*
+*.key
+*.pem
 
 # IDE & OS files
 .vscode/
@@ -59,4 +68,10 @@ pending_sizes.json
 *.swp
 *.swo
 .DS_Store
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
 Thumbs.db
+*.bak
+*~

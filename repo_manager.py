@@ -316,6 +316,37 @@ def cmd_index(repo_root: Path):
             mtime_display = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d")
             mtime_epoch = stat.st_mtime
 
+            # Handle offloaded stubs for Mac storage conservation
+            if fname.endswith(".stub.json"):
+                try:
+                    sdata = json.loads(fpath.read_text(encoding="utf-8"))
+                    orig_name = fname[:-10]  # strip .stub.json
+                    sha256 = sdata.get("sha256", "")
+                    title = sdata.get("title", orig_name)
+                    orig_size = sdata.get("original_size", size_bytes)
+                    ext = Path(orig_name).suffix.lower().lstrip(".") or "file"
+                    category = rel_path.split("/")[0] if "/" in rel_path else "root"
+                    orig_rel = (fpath.parent / orig_name).relative_to(repo_root).as_posix()
+                    entry = {
+                        "rel_path": orig_rel,
+                        "filename": orig_name,
+                        "title": title,
+                        "category": category,
+                        "format": ext.upper(),
+                        "size_bytes": orig_size,
+                        "size_human": human_size(orig_size),
+                        "mtime": mtime_display,
+                        "mtime_epoch": mtime_epoch,
+                        "sha256": sha256,
+                        "source_url": sdata.get("archive_location", ""),
+                        "is_stub": True,
+                    }
+                    entries.append(entry)
+                    manifest_lines.append(f"{sha256}  ../{orig_rel}")
+                    continue
+                except Exception:
+                    pass
+
             # Reuse hash if file size and mtime haven't changed
             prev = existing_catalog.get(rel_path)
             prev_mtime_match = (
@@ -764,6 +795,16 @@ def cmd_verify(repo_root: Path):
         expected_hash, rel_ref = line.split("  ", 1)
         target_path = (index_dir / rel_ref).resolve()
         if not target_path.exists():
+            # Check if file has been safely offloaded to an archived stub (.stub.json)
+            stub_path = target_path.with_name(f"{target_path.name}.stub.json")
+            if stub_path.exists():
+                try:
+                    sdata = json.loads(stub_path.read_text(encoding="utf-8"))
+                    if sdata.get("sha256") == expected_hash:
+                        ok += 1
+                        continue
+                except Exception:
+                    pass
             print(f"[FAIL] Missing file: {rel_ref}")
             failed += 1
             continue
